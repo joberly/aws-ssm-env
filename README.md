@@ -7,9 +7,21 @@ Simple utility to print parameters from Amazon EC2 Systems Manager (ssm) Paramet
 ### AWS_SSM_ENV_BACKOFF
 
 Set `AWS_SSM_ENV_BACKOFF` to a Golang `time.Duration` string to set the automatic maximum exponential backoff for AWS API retries.
+Default is the [default AWS SDK v2 value](https://pkg.go.dev/github.com/aws/aws-sdk-go-v2@v1.6.0/aws/retry#pkg-constants).
+Example setting:
 
 ```bash
 export AWS_SSM_ENV_BACKOFF="30s"
+```
+
+### AWS_SSM_ENV_ATTEMPTS
+
+Set `AWS_SSM_ENV_ATTEMPTS` to a Golang `int` string to set the automatic maximum number of AWS API retries.
+Default is the [default AWS SDK v2 value](https://pkg.go.dev/github.com/aws/aws-sdk-go-v2@v1.6.0/aws/retry#pkg-constants).
+Example setting:
+
+```bash
+export AWS_SSM_ENV_ATTEMPTS="10"
 ```
 
 ## Usage
