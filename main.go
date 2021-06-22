@@ -61,14 +61,14 @@ func initClient() error {
 		backoffStr := os.Getenv(envBackoff)
 		if backoffStr != "" {
 			backoff, err := time.ParseDuration(backoffStr)
-			if err != nil {
+			if err == nil {
 				o.MaxBackoff = backoff
 			}
 		}
 		attemptsStr := os.Getenv(envAttempts)
 		if attemptsStr != "" {
 			attempts, err := strconv.Atoi(attemptsStr)
-			if err != nil {
+			if err == nil {
 				o.MaxAttempts = attempts
 			}
 		}
@@ -125,26 +125,30 @@ func fetchParams(paths []string) ([]types.Parameter, error) {
 	// - https://docs.aws.amazon.com/cli/latest/reference/ssm/get-parameters-by-path.html ("This API action doesn't support filtering by tags.")
 	// - https://github.com/aws/aws-cli/issues/2850)
 	//
-	// 1) retrieve parameters by tags via describe-parameters
-	// 2) retrieve parameters by path via get-parameters-by-path
-	// 3) calculate union of two sets
-
-	// retrieve all parameters with given tags
-	paramNames, err := describeParams(tagFilters)
-	if err != nil {
-		return nil, err
-	}
+	// 1) retrieve parameters by path via get-parameters-by-path
+	// 2) retrieve parameters by tags via describe-parameters
+	// 3) calculate intersection of two sets
 
 	// retrieve params for given paths
 	params, err := getParamsByPath(paths)
 	if err != nil {
-		return params, err
+		return nil, err
 	}
 
-	// calculate union of two sets
-	union := calcUnion(paramNames, params)
+	// retrieve all parameters with given tags
+	// but don't bother if no tags were given
+	if len(tags) > 0 {
+		paramNames, err := describeParams(tagFilters)
+		if err != nil {
+			return nil, err
+		}
 
-	return union, nil
+		// return intersection of two sets
+		return calcIntersection(paramNames, params), nil
+	}
+
+	// just return all parameters by path if no tags given
+	return params, nil
 }
 
 func describeParams(filters []types.ParameterStringFilter) ([]string, error) {
@@ -219,14 +223,14 @@ func getParamsByPath(paths []string) ([]types.Parameter, error) {
 	return params, nil
 }
 
-func calcUnion(paramNames []string, params []types.Parameter) []types.Parameter {
+func calcIntersection(paramNames []string, params []types.Parameter) []types.Parameter {
 	// build map lookup
 	lookup := make(map[string]bool)
 	for _, paramName := range paramNames {
 		lookup[paramName] = true
 	}
 
-	// calculate union
+	// calculate intersection
 	union := make([]types.Parameter, 0)
 	for _, param := range params {
 		if lookup[*param.Name] {
